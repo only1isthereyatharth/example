@@ -6,7 +6,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -30,35 +29,30 @@ public class BankAccountController {
     private BankAccountService bankAccountService;
 
      @GetMapping
-     public ResponseEntity<List<BankAccount>> getAllAccounts() throws Exception {
+     public ResponseEntity<List<BankAccount>> getAllAccounts() {
         return ResponseEntity.ok(bankAccountService.getAllAccounts());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<BankAccount> getAccountById(@PathVariable Long id) throws Exception {
+    public ResponseEntity<BankAccount> getAccountById(@PathVariable Long id) {
         return ResponseEntity.ok(bankAccountService.getBankAccountById(id));
     }
 
      @PostMapping
-    public ResponseEntity<BankAccountResponse> createAccount(@Valid @RequestBody BankAccountRequest request) throws Exception {
+    public ResponseEntity<BankAccountResponse> createAccount(@Valid @RequestBody BankAccountRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(bankAccountService.createBankAccount(request));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<BankAccountResponse> updateAccount(
             @PathVariable Long id,
-            @Valid @RequestBody BankAccountRequest request) throws Exception {
+            @Valid @RequestBody BankAccountRequest request) {
         return ResponseEntity.ok(bankAccountService.updateBankAccount(id, request));
     }
 
      @DeleteMapping("/{id}")
-    public ResponseEntity<String> deleteAccount(@PathVariable Long id) throws Exception {
+    public ResponseEntity<String> deleteAccount(@PathVariable Long id) {
         bankAccountService.deleteBankAccount(id);
         return ResponseEntity.ok("Bank account deleted successfully");
-    }
-
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<String> handleBadRequest(IllegalArgumentException exception) {
-        return ResponseEntity.badRequest().body(exception.getMessage());
     }
 }
