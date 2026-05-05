@@ -4,8 +4,8 @@ import java.io.IOException;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.AuthenticationException;
-import org.springframework.security.web.AuthenticationEntryPoint;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.stereotype.Component;
 
 import com.learnjwt.example.exception.ApiErrorResponseFactory;
@@ -16,7 +16,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import tools.jackson.databind.ObjectMapper;
 
 @Component
-public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint{
+public class JwtAccessDeniedHandler implements AccessDeniedHandler {
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -25,20 +25,19 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint{
     private ApiErrorResponseFactory apiErrorResponseFactory;
 
     @Override
-    public void commence(HttpServletRequest request, HttpServletResponse response,
-            AuthenticationException authException) throws IOException, ServletException {
-        
-        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+    public void handle(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            AccessDeniedException accessDeniedException) throws IOException, ServletException {
+        response.setStatus(HttpServletResponse.SC_FORBIDDEN);
         response.setContentType("application/json");
         objectMapper.writeValue(
             response.getOutputStream(),
             apiErrorResponseFactory.create(
-                HttpStatus.UNAUTHORIZED,
-                "Authentication is required to access this resource",
+                HttpStatus.FORBIDDEN,
+                "You do not have permission to access this resource",
                 request.getRequestURI()
             )
         );
     }
-    
-    
 }

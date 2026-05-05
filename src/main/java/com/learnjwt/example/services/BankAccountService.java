@@ -3,13 +3,14 @@ package com.learnjwt.example.services;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 
 import com.learnjwt.example.dto.BankAccountRequest;
 import com.learnjwt.example.dto.BankAccountResponse;
 import com.learnjwt.example.entity.BankAccount;
+import com.learnjwt.example.exception.ConflictException;
+import com.learnjwt.example.exception.ResourceNotFoundException;
 import com.learnjwt.example.repository.BankingAcountRepo;
 
 @Service
@@ -18,62 +19,59 @@ public class BankAccountService {
     @Autowired
     private BankingAcountRepo bankingAcountRepo;
 
-    public List<BankAccount> getAllAccounts() throws Exception {
-        try {
-            return bankingAcountRepo.findAll();
-        } catch (Exception e) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error occurred while fetching bank accounts", e);
-        }
+    public List<BankAccount> getAllAccounts() {
+        return bankingAcountRepo.findAll();
     } 
 
-    public BankAccount getBankAccountById(Long id) throws Exception {
-        try {
-            return bankingAcountRepo.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,"Bank account not found with id: " + id));
-        } catch (Exception e) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error occurred while fetching bank account", e);
-        }
+    public BankAccount getBankAccountById(Long id) {
+        return bankingAcountRepo.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Bank account not found with id: " + id));
     }
 
-    public BankAccountResponse createBankAccount(BankAccountRequest requestBankAccount) throws Exception {
+    public BankAccountResponse createBankAccount(BankAccountRequest requestBankAccount) {
         boolean existingAccount = bankingAcountRepo.existsByAccountNumber(requestBankAccount.getAccountNumber());
         if (existingAccount) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Bank account with number " + requestBankAccount.getAccountNumber() + " already exists");
+            throw new ConflictException("Bank account with number " + requestBankAccount.getAccountNumber() + " already exists");
         }
+
+        BankAccount newBankAccount = new BankAccount();
+        mapRequestToBankAccount(requestBankAccount, newBankAccount);
+
         try {
-            BankAccount newBankAccount = new BankAccount();
-            mapRequestToBankAccount(requestBankAccount, newBankAccount);
             BankAccount savedBankAccount = bankingAcountRepo.save(newBankAccount);
             BankAccountResponse response = new BankAccountResponse();
             mapBankAccountToResponse(savedBankAccount, response);
             return response;
-        } catch (Exception e) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error occurred while creating bank account", e);
+        } catch (DataIntegrityViolationException exception) {
+            throw new ConflictException("Bank account with number " + requestBankAccount.getAccountNumber() + " already exists");
         }
     }
 
-    public BankAccountResponse updateBankAccount(Long id, BankAccountRequest requestBankAccountRequest) throws Exception {
+    public BankAccountResponse updateBankAccount(Long id, BankAccountRequest requestBankAccountRequest) {
+        BankAccount existingBankAccount = bankingAcountRepo.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Bank account not found with id: " + id));
+
+        if (!existingBankAccount.getAccountNumber().equals(requestBankAccountRequest.getAccountNumber())
+                && bankingAcountRepo.existsByAccountNumber(requestBankAccountRequest.getAccountNumber())) {
+            throw new ConflictException("Bank account with number " + requestBankAccountRequest.getAccountNumber() + " already exists");
+        }
+
+        mapRequestToBankAccount(requestBankAccountRequest, existingBankAccount);
+
         try {
-            BankAccount existingBankAccount = bankingAcountRepo.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Bank account not found with id: " + id));
-            mapRequestToBankAccount(requestBankAccountRequest, existingBankAccount);
             BankAccount savedBankAccount = bankingAcountRepo.save(existingBankAccount);
             BankAccountResponse response = new BankAccountResponse();
             mapBankAccountToResponse(savedBankAccount, response);
             return response;
-        } catch (Exception e) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error occurred while updating bank account", e);
+        } catch (DataIntegrityViolationException exception) {
+            throw new ConflictException("Bank account with number " + requestBankAccountRequest.getAccountNumber() + " already exists");
         }
     }
 
-    public void deleteBankAccount(Long id) throws Exception {
-        try {
-            BankAccount existingBankAccount = bankingAcountRepo.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Bank account not found with id: " + id));
-            bankingAcountRepo.delete(existingBankAccount);
-        } catch (Exception e) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error occurred while deleting bank account", e);
-        }
+    public void deleteBankAccount(Long id) {
+        BankAccount existingBankAccount = bankingAcountRepo.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Bank account not found with id: " + id));
+        bankingAcountRepo.delete(existingBankAccount);
     }
 
 
